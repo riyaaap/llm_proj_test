@@ -1,0 +1,18 @@
+# Ignore python cache and virtual environments 
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/ 
+
+# Ignore standard Hugging Face download cache locations
+.cache/
+huggingface_cache/
+
+# Ignore local data directories where you might save files 
+data/ 
+datasets/ 
+*.csv
+*.json
+*.parquet 
+
