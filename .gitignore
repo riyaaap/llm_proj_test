@@ -5,6 +5,9 @@ __pycache__/
 venv/
 env/ 
 
+# Ignore the environment variables file
+.env
+
 # Ignore standard Hugging Face download cache locations
 .cache/
 huggingface_cache/
