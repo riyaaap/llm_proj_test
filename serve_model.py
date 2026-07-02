@@ -30,8 +30,8 @@ COMMAND = [
 	"--model", "Qwen/Qwen2.5-7B",
 	"--host", "0.0.0.0",
 	"--port", "8000",
-    	"--gpu-memory-utilization", "0.75",
-    	"--max-model-len", "4096"
+    	"--gpu-memory-utilization", "0.30", # restricts vLLM to ~7.2 GB of VRAM from nvidia L4 gpu chip
+    	"--max-model-len", "2048" # caps cpmtext window to free up allocation blocks 
 ]
 
 def main():
