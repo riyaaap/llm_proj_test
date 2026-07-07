@@ -8,30 +8,16 @@ import gradio as gr
 
 # HARDWARE/ENVIRONMENT CONFIG stuff
 # force system to use only GPU 1
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 # enable pytorch memory management
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+# os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
-# Clean corrupted compiler artifact directory automatically
-CACHE_DIR = "/home/riya/.cache/flashinfer"
-if os.path.exists(CACHE_DIR):
-    print(f"Clearing corrupted compiler cache at: {CACHE_DIR}")
-    try:
-        subprocess.run(["rm", "-rf", CACHE_DIR], check=True)
-    except Exception:
-        pass
-
-# Expose compilation environment paths to Ninja/C++ tools
-os.environ["CUDA_HOME"] = "/usr/local/cuda"
-os.environ["PATH"] = f"/usr/local/cuda/bin:{os.environ.get('PATH', '')}"
-os.environ["LD_LIBRARY_PATH"] = f"/usr/local/cuda/lib64:{os.environ.get('LD_LIBRARY_PATH', '')}"
-
-# UNCOMMENTED FIXES: Force backend to TORCH/FLASH_ATTN to bypass flashinfer JIT errors
-os.environ["VLLM_USE_V1"] = "0"
-os.environ["VLLM_DISABLE_FLASHINFER"] = "1"
-os.environ["VLLM_ATTENTION_BACKEND"] = "FLASH_ATTN"
-os.environ["FLASHINFER_DISABLE_JIT"] = "1"
+# Force backend to TORCH/FLASH_ATTN to bypass flashinfer JIT errors
+# os.environ["VLLM_USE_V1"] = "0"
+# os.environ["VLLM_DISABLE_FLASHINFER"] = "1"
+# os.environ["VLLM_ATTENTION_BACKEND"] = "FLASH_ATTN"
+# os.environ["FLASHINFER_DISABLE_JIT"] = "1"
 
 # Pipeline Path Configurations
 ENV_PYTHON_PATH = "/mnt/data/riya/llm_proj/venv/bin/python"
@@ -57,7 +43,6 @@ def launch_vllm():
         "--gpu-memory-utilization", "0.85",
         "--max-model-len", "2048",
         "--disable-custom-all-reduce",  ## Prevents single-GPU process hanging
-        "--disable-flashinfer-backend"
     ]
 
     # launch vLLM as independent process to not block python execution
