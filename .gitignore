@@ -20,3 +20,10 @@ datasets/
 *.json
 *.parquet 
 
+# Ignore fine-tuned models and LoRA adapters 
+    # contains fully merged model weights 
+Qwen2.5-7B-Summarizer/ 
+    # contains LoRA adapters 
+qwen-stage1-cnn-lora/ 
+
+

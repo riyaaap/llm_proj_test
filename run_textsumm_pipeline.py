@@ -12,7 +12,7 @@ import torch # import AFTER setting env variable to select specific GPU to use
 
 # limiting VRAM use to 13.9 GB  w/ vLLM capped at 30% to stay under 21.6GB 90% total use ceiling
 torch.cuda.set_per_process_memory_fraction(0.72, 0)
-# run fails with CUDA out of memory error if use 0.58 
+# run fails with CUDA out of memory error if use 0.58
 
 # training script for text summarization, trained on dataset found at "ambrosfitz/cnn-daily-grammar" on Hugging Face:
 
@@ -85,9 +85,10 @@ def process_single_row(example):
     labels = [-100] * len(prompt_tokens) + target_tokens
 
     # enforce max length boundaries
-    if len(input_ids) > 1024:
-        input_ids = input_ids[:1024]
-        labels = labels[:1024]
+    # was initially 2048 then decreased to -> 1024 --> 512 to lower gpu memory use
+    if len(input_ids) > 512:
+        input_ids = input_ids[:512]
+        labels = labels[:512]
 
     attention_mask = [1] * len(input_ids)
 
@@ -115,7 +116,8 @@ print(f"Stage 1 training dataset pairs balanced. Rows: {len(tokenized_dataset)}"
 lora_config = LoraConfig(
     r=8,
     lora_alpha=16,
-    target_modules=["q_proj", "v_proj", "gate_proj", "up_proj", "down_proj"],
+    target_modules=["q_proj", "v_proj"],
+    # for target blocks initially had "gate_proj", "up_proj", "down_proj" but removed to lower gpu memory use
     lora_dropout=0.05,
     bias="none",
     task_type=TaskType.CAUSAL_LM
