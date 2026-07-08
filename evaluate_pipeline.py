@@ -6,6 +6,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from sklearn.metrics.pairwise import cosine_similarity
 import nltk
 from rouge_score import rouge_scorer
+import re
 
 # ensure NLTK resources available locally
 try:
@@ -34,6 +35,12 @@ TEST_DATASET = [
     }
 ]
 
+
+def clean_system_leak(text):
+    """Strips out any weird system instruction hallucinations left by the base model."""
+    pattern = r"(You are an AI assistant|User will you give you a task|You are a helpful assistant|Think like you are answering).*"
+    return re.sub(pattern, "", text, flags=re.IGNORECASE).strip()
+
 # Evaluation metric helper functs
 def calculate_semantic_similarity(text1, text2, tokenizer, model):
     """Calculates cosine similarity using the model's own internal hidden-state embeddings."""
@@ -54,9 +61,9 @@ def get_readability_score(text):
 def llm_judge_hallucination_check(article, summary, tokenizer, model):
     """Uses base model itself as zero-shot judge to score factual consistency (1-5 scale)."""
     judge_prompt = (
-        f"<|im_start|>system\nYou are an unbiased AI evaluator checking for hallucinations. "
-        f"Rate the summary based strictly on the provided article on a scale from 1 (contains completely fabricated facts) "
-        f"to 5 (perfect factual accuracy, zero hallucinations). Output only a single number.<|im_end|>\n"
+        f"<|im_start|>system\nYou are a strict evaluator. Read the article and summary. "
+        f"Rate factual consistency of the summary from 1 (hallucinated facts) to 5 (perfect accuracy). "
+        f"Respond with only a single digit between 1 and 5.<|im_end|>\n"
         f"<|im_start|>user\nArticle: {article}\nSummary: {summary}\n\nRating (1-5):<|im_end|>\n"
         f"<|im_start|>assistant\n"
     )
@@ -68,21 +75,27 @@ def llm_judge_hallucination_check(article, summary, tokenizer, model):
     with torch.no_grad():
         outputs = model.generate(
             **inputs,
-            max_new_tokens=5,
+            max_new_tokens=15,
             do_sample=False, # turn off sampling for deterministic
-            eos_token_id=tokenizer.eos_token_id
+            eos_token_id=tokenizer.eos_token_id,
+            pad_token_id=tokenizer.eos_token_id
         )
 
     # correctly slice 2D tensor using scalar prompt_length
     generated_tokens = outputs[0][prompt_length:]
     response = tokenizer.decode(generated_tokens, skip_special_tokens=True).strip()
 
-    try:
-        # Extract the first digit found in the response string
-        digits = [int(s) for s in response.split() if s.isdigit()]
-        return digits[0] if digits else int(response[0])
-    except Exception:
-        return 3  # Fallback middle score if parsing fails
+    # Regex Extraction: Look for score digit between 1 and 5
+    match = re.search(r'\b[1-5]\b', response)
+    if match:
+        return int(match.group(0))
+
+    # Secondary fallback check for hidden numbers
+    numbers = [int(s) for s in response.split() if s.isdigit()]
+    if numbers and 1 <= numbers[0] <= 5:
+        return numbers[0]
+
+    return 3  # Neutral fallback
 
 def generate_summary(model, tokenizer, article, is_fine_tuned=True):
     """Generates a summary using the standardized template schema."""
@@ -107,12 +120,14 @@ def generate_summary(model, tokenizer, article, is_fine_tuned=True):
             max_new_tokens=150,
             do_sample=True,      # Explicitly enable sampling so temperature works
             temperature=0.1,
-            eos_token_id=tokenizer.eos_token_id
+            eos_token_id=tokenizer.eos_token_id,
+            pad_token_id=tokenizer.eos_token_id
         )
 
     # remove outputs[0] tracking and targeting prompt_length
     generated_tokens = outputs[0][prompt_length:]
-    return tokenizer.decode(generated_tokens, skip_special_tokens=True).strip()
+    raw_summary = tokenizer.decode(generated_tokens, skip_special_tokens=True).strip()
+    return clean_system_leak(raw_summary)
 
 ## MAIN EXECUTION ##
 def main():
